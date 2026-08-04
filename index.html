@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian & Co. — The Living Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="d3.min.js"></script>
+<script src="topojson-client.min.js"></script>
+<style>
+  :root{
+    --ink:#0a0f1a;
+    --ink-2:#0e1526;
+    --panel:#0f1a26;
+    --sea:#0d1b22;
+    --brass:#c9a24b;
+    --brass-light:#e9d4a0;
+    --champagne:#f1e3bd;
+    --parchment:#eadfc9;
+    --muted:#7f8aa0;
+    --line:rgba(201,162,75,0.22);
+    --line-soft:rgba(201,162,75,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 0%, #101d2f 0%, var(--ink) 55%, #060a12 100%);
+    color:var(--parchment);
+    font-family:'Manrope', sans-serif;
+    overflow:hidden;
+  }
+  .stage{
+    position:relative;
+    width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- Brand chrome ---------- */
+  .brand{
+    position:absolute; top:36px; left:40px; z-index:20;
+    pointer-events:none;
+  }
+  .brand .mark{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:22px;
+    letter-spacing:0.14em;
+    color:var(--champagne);
+    text-transform:uppercase;
+  }
+  .brand .mark span{ color:var(--brass); font-style:italic; font-weight:300; }
+  .brand .tag{
+    margin-top:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  .instructions{
+    position:absolute; bottom:32px; left:40px; z-index:20;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    display:flex; align-items:center; gap:10px;
+    transition:opacity .5s ease;
+  }
+  .instructions .dot{
+    width:5px; height:5px; border-radius:50%;
+    background:var(--brass);
+    box-shadow:0 0 8px var(--brass);
+    animation:pulse-dot 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot{ 0%,100%{opacity:.4} 50%{opacity:1} }
+
+  .compass{
+    position:absolute; bottom:28px; right:36px; z-index:20;
+    opacity:0.5;
+    width:64px; height:64px;
+  }
+
+  /* ---------- Map ---------- */
+  svg#globe{
+    width:min(96vw, 1400px);
+    height:min(94vh, 900px);
+    display:block;
+  }
+  .sphere{ fill:url(#seaGradient); }
+  .graticule{ fill:none; stroke:var(--line-soft); stroke-width:0.5; }
+  .country{
+    fill:#131f30;
+    stroke:var(--line);
+    stroke-width:0.6;
+    vector-effect:non-scaling-stroke;
+    transition:fill 480ms cubic-bezier(.2,.7,.3,1), stroke 480ms ease;
+    cursor:pointer;
+  }
+  .country.has-journey{ fill:#16273b; }
+  .country.hovered{
+    fill:url(#brassFill);
+    stroke:var(--champagne);
+    stroke-width:1.1;
+  }
+  .country.dimmed{ opacity:0.16; }
+  .country.locked{ pointer-events:none; }
+
+  .journey-node{
+    fill:var(--brass);
+    opacity:0.85;
+  }
+  .journey-node-pulse{
+    fill:none;
+    stroke:var(--brass);
+    stroke-width:1;
+    opacity:0.55;
+    animation:ping 2.6s ease-out infinite;
+    vector-effect:non-scaling-stroke;
+  }
+  @keyframes ping{
+    0%{ transform:scale(1); opacity:.55; }
+    75%{ transform:scale(2.6); opacity:0; }
+    100%{ transform:scale(2.6); opacity:0; }
+  }
+
+  .route-path{
+    fill:none;
+    stroke:var(--brass-light);
+    stroke-width:1.4;
+    stroke-dasharray:1 6;
+    stroke-linecap:round;
+    vector-effect:non-scaling-stroke;
+    opacity:0;
+    animation:dash-flow 24s linear infinite;
+  }
+  @keyframes dash-flow{ to{ stroke-dashoffset:-500; } }
+
+  .checkpoint circle.ring{
+    fill:none; stroke:var(--brass-light); stroke-width:1; vector-effect:non-scaling-stroke;
+  }
+  .checkpoint circle.core{
+    fill:var(--ink); stroke:var(--brass-light); stroke-width:1.6; vector-effect:non-scaling-stroke;
+    transition:fill 220ms ease, r 220ms ease;
+  }
+  .checkpoint{ cursor:pointer; opacity:0; }
+  .checkpoint.active circle.core{ fill:var(--brass-light); }
+  .checkpoint text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    fill:var(--muted);
+    letter-spacing:0.06em;
+  }
+
+  /* ---------- Tooltip ---------- */
+  #tooltip{
+    position:fixed; z-index:60; pointer-events:none;
+    padding:10px 14px;
+    background:rgba(10,15,26,0.88);
+    border:1px solid var(--line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius:2px;
+    opacity:0; transform:translate(14px, -50%) translateY(10px);
+    transition:opacity 180ms ease, transform 180ms ease;
+    max-width:230px;
+  }
+  #tooltip.show{ opacity:1; transform:translate(14px,-50%) translateY(0); }
+  #tooltip .t-title{
+    font-family:'Fraunces', serif; font-size:15px; color:var(--champagne);
+    letter-spacing:0.02em;
+  }
+  #tooltip .t-sub{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px;
+    color:var(--brass); letter-spacing:0.08em; text-transform:uppercase;
+    margin-top:4px;
+  }
+  #tooltip .t-desc{
+    font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.5;
+  }
+
+  /* ---------- Back control ---------- */
+  #backBtn{
+    position:absolute; top:34px; left:50%; transform:translateX(-50%) translateY(-8px);
+    z-index:30;
+    background:rgba(15,26,38,0.7);
+    border:1px solid var(--line);
+    backdrop-filter: blur(8px);
+    color:var(--champagne);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase;
+    padding:10px 20px;
+    border-radius:2px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:10px;
+    opacity:0; pointer-events:none;
+    transition:opacity 420ms ease, transform 420ms ease, border-color 220ms ease;
+  }
+  #backBtn.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+  #backBtn:hover{ border-color:var(--brass); }
+  #backBtn .arrow{ color:var(--brass); font-size:13px; }
+
+  /* ---------- Journey panel ---------- */
+  #journeyPanel{
+    position:absolute; top:0; right:0; height:100%;
+    width:340px;
+    background:linear-gradient(180deg, rgba(14,21,38,0.92), rgba(10,15,26,0.96));
+    border-left:1px solid var(--line);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transform:translateX(100%);
+    transition:transform 620ms cubic-bezier(.2,.8,.2,1);
+    z-index:25;
+    padding:96px 34px 40px;
+    overflow-y:auto;
+  }
+  #journeyPanel.show{ transform:translateX(0); }
+  #journeyPanel .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.16em;
+    color:var(--brass); text-transform:uppercase;
+  }
+  #journeyPanel h2{
+    font-family:'Fraunces', serif; font-weight:500; font-size:30px;
+    color:var(--champagne); margin:8px 0 4px; letter-spacing:0.01em;
+  }
+  #journeyPanel .country-desc{
+    font-size:12.5px; color:var(--muted); line-height:1.7; margin-bottom:30px;
+  }
+  .stop{
+    position:relative;
+    padding:0 0 26px 26px;
+    border-left:1px solid var(--line);
+    margin-left:6px;
+  }
+  .stop:last-child{ border-left:1px solid transparent; padding-bottom:2px; }
+  .stop::before{
+    content:'';
+    position:absolute; left:-4.5px; top:2px;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--ink); border:1.6px solid var(--brass-light);
+  }
+  .stop.hot::before{ background:var(--brass-light); }
+  .stop .stop-coord{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px;
+    color:var(--muted); letter-spacing:0.06em;
+  }
+  .stop .stop-name{
+    font-family:'Fraunces', serif; font-size:17px; color:var(--parchment);
+    margin:3px 0 5px;
+  }
+  .stop .stop-desc{
+    font-size:11.5px; color:var(--muted); line-height:1.6;
+  }
+
+  #closePanel{
+    position:absolute; top:36px; right:34px;
+    background:none; border:none; color:var(--muted);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em;
+    cursor:pointer;
+  }
+  #closePanel:hover{ color:var(--brass-light); }
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:absolute; bottom:90px; left:50%;
+    transform:translateX(-50%) translateY(8px);
+    background:rgba(15,26,38,0.9);
+    border:1px solid var(--line);
+    padding:11px 22px;
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.08em;
+    color:var(--champagne);
+    opacity:0; pointer-events:none;
+    transition:opacity 320ms ease, transform 320ms ease;
+    z-index:50; text-transform:uppercase;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  #loader{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px; z-index:100; background:var(--ink);
+    transition:opacity 600ms ease;
+  }
+  #loader .ring{
+    width:34px; height:34px; border-radius:50%;
+    border:1px solid var(--line);
+    border-top-color:var(--brass);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loader .ltext{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.16em;
+    color:var(--muted); text-transform:uppercase;
+  }
+
+  @media (max-width:720px){
+    #journeyPanel{ width:100%; }
+    .brand{ top:22px; left:22px; }
+    .instructions{ left:22px; bottom:22px; font-size:9.5px; }
+    .compass{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ring"></div>
+  <div class="ltext">Charting the Atlas</div>
+</div>
+
+<div class="stage">
+  <div class="brand">
+    <div class="mark">Meridian <span>&amp;</span> Co.</div>
+    <div class="tag">Bespoke Journeys, Charted</div>
+  </div>
+
+  <div class="instructions" id="instructions">
+    <span class="dot"></span> Hover a territory to preview · click to plot the voyage
+  </div>
+
+  <svg class="compass" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="30" fill="none" stroke="#c9a24b" stroke-width="0.7"/>
+    <circle cx="32" cy="32" r="24" fill="none" stroke="#c9a24b" stroke-width="0.4"/>
+    <path d="M32 6 L36 32 L32 58 L28 32 Z" fill="#c9a24b" opacity="0.85"/>
+    <path d="M6 32 L32 28 L58 32 L32 36 Z" fill="#c9a24b" opacity="0.4"/>
+    <text x="32" y="14" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#eadfc9">N</text>
+  </svg>
+
+  <svg id="globe" viewBox="0 0 960 620"></svg>
+
+  <button id="backBtn"><span class="arrow">&#8592;</span> Return to the Atlas</button>
+
+  <div id="journeyPanel">
+    <button id="closePanel">CLOSE ✕</button>
+    <div class="eyebrow" id="panelEyebrow">Curated Voyage</div>
+    <h2 id="panelTitle">—</h2>
+    <div class="country-desc" id="panelDesc"></div>
+    <div id="stopsList"></div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="tooltip">
+    <div class="t-title" id="tt-title"></div>
+    <div class="t-sub" id="tt-sub"></div>
+    <div class="t-desc" id="tt-desc"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  /* =========================================================
+     JOURNEY DATA — curated countries with checkpoints
+  ========================================================== */
+  const journeys = {
+    "Italy": {
+      subtitle: "Three Cities, One Renaissance",
+      desc: "From imperial ruins to Tuscan hills and canal light — a slow arc through Italy's three defining capitals.",
+      stops: [
+        { name:"Rome", coords:[12.4964,41.9028], desc:"Begin among the ruins — the Forum at dawn, before the crowds arrive." },
+        { name:"Florence", coords:[11.2558,43.7696], desc:"Two nights beneath the Duomo, with a private Uffizi hour after closing." },
+        { name:"Venice", coords:[12.3155,45.4408], desc:"Arrive by water taxi at dusk; close the journey with a Grand Canal dinner." }
+      ]
+    },
+    "France": {
+      subtitle: "Capital to Coastline",
+      desc: "Paris atelier mornings give way to Provençal light and the hush of the Riviera off-season.",
+      stops: [
+        { name:"Paris", coords:[2.3522,48.8566], desc:"Left Bank ateliers, a private Louvre wing, dinner on the Seine." },
+        { name:"Lyon", coords:[4.8357,45.7640], desc:"A culinary interlude — bouchons, silk quarters, the Presqu'île at night." },
+        { name:"Nice", coords:[7.2620,43.7102], desc:"Close on the Promenade — pastel façades and the scent of the Mediterranean." }
+      ]
+    },
+    "Japan": {
+      subtitle: "Neon to Stillness",
+      desc: "Tokyo's velocity, Kyoto's quiet gardens, and Osaka's evening kitchens — Japan in contrast.",
+      stops: [
+        { name:"Tokyo", coords:[139.6917,35.6895], desc:"Shibuya at night, a tea ceremony at dawn, tailored to your pace." },
+        { name:"Kyoto", coords:[135.7681,35.0116], desc:"Private access to a bamboo grove before the gates open to the public." },
+        { name:"Osaka", coords:[135.5023,34.6937], desc:"An evening of Dotonbori kitchens — chosen, not stumbled upon." }
+      ]
+    },
+    "Egypt": {
+      subtitle: "The River of Kings",
+      desc: "A journey up the Nile, from Cairo's museums to the temples of the Upper Kingdom.",
+      stops: [
+        { name:"Cairo", coords:[31.2357,30.0444], desc:"Sunrise at Giza before the gates open, then the new Grand Museum." },
+        { name:"Luxor", coords:[32.6396,25.6872], desc:"Balloon over the Valley of the Kings at first light." },
+        { name:"Aswan", coords:[32.8998,24.0889], desc:"A felucca at golden hour, ending near the temple of Philae." }
+      ]
+    },
+    "Greece": {
+      subtitle: "Marble & Aegean Light",
+      desc: "From the Acropolis to the volcanic cliffs and whitewashed lanes of the Cyclades.",
+      stops: [
+        { name:"Athens", coords:[23.7275,37.9838], desc:"The Acropolis at first light, then the old city on foot." },
+        { name:"Santorini", coords:[25.4615,36.3932], desc:"Caldera-view suite, sunset in Oia timed to the last ferry's wake." },
+        { name:"Mykonos", coords:[25.3289,37.4467], desc:"Windmills, hidden coves, a final dinner above Little Venice." }
+      ]
+    },
+    "Thailand": {
+      subtitle: "Temples, Hills & Tide",
+      desc: "Bangkok's temples, the mountain calm of Chiang Mai, and the tides of the Andaman coast.",
+      stops: [
+        { name:"Bangkok", coords:[100.5018,13.7563], desc:"Riverside temples by longtail boat, away from the main channel." },
+        { name:"Chiang Mai", coords:[98.9853,18.7883], desc:"An ethical elephant sanctuary and a lantern-lit old town evening." },
+        { name:"Phuket", coords:[98.3923,7.8804], desc:"Close the journey on a private stretch of Andaman shoreline." }
+      ]
+    }
+  };
+
+  /* =========================================================
+     SETUP
+  ========================================================== */
+  const svg = d3.select("#globe");
+  const width = 960, height = 620;
+  const defs = svg.append("defs");
+
+  // Sea/Ocean gradient
+  const seaGrad = defs.append("radialGradient").attr("id","seaGradient")
+    .attr("cx","50%").attr("cy","38%").attr("r","70%");
+  seaGrad.append("stop").attr("offset","0%").attr("stop-color","#0b1626");
+  seaGrad.append("stop").attr("offset","100%").attr("stop-color","#050a12");
+
+  // Brass/gold gradient for country fills
+  const brassGrad = defs.append("linearGradient").attr("id","brassFill")
+    .attr("x1","0%").attr("y1","0%").attr("x2","100%").attr("y2","100%");
+  brassGrad.append("stop").attr("offset","0%").attr("stop-color","#e9d4a0");
+  brassGrad.append("stop").attr("offset","100%").attr("stop-color","#c9a24b");
+
+  // Shadow under the globe for 3D depth
+  const shadowGrad = defs.append("radialGradient").attr("id","globeShadow")
+    .attr("cx","50%").attr("cy","50%").attr("r","50%");
+  shadowGrad.append("stop").attr("offset","60%").attr("stop-color","rgba(6,10,18,0.95)");
+  shadowGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(6,10,18,0)");
+
+  // Atmos/edge glow gradient for a premium rim light
+  const atmosGrad = defs.append("radialGradient").attr("id","atmosphereGrad")
+    .attr("cx","50%").attr("cy","50%").attr("r","50%")
+    .attr("fx","40%").attr("fy","40%");
+  atmosGrad.append("stop").attr("offset","80%").attr("stop-color","rgba(201,162,75,0.0)");
+  atmosGrad.append("stop").attr("offset","96%").attr("stop-color","rgba(201,162,75,0.18)");
+  atmosGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(201,162,75,0.40)");
+
+  const glow = defs.append("filter").attr("id","softGlow").attr("x","-60%").attr("y","-60%").attr("width","220%").attr("height","220%");
+  glow.append("feGaussianBlur").attr("stdDeviation","3.2").attr("result","blur");
+  const merge = glow.append("feMerge");
+  merge.append("feMergeNode").attr("in","blur");
+  merge.append("feMergeNode").attr("in","SourceGraphic");
+
+  // Orthographic 3D projection
+  const projection = d3.geoOrthographic()
+    .scale(230)
+    .translate([width/2, height/2])
+    .clipAngle(90);
+
+  const path = d3.geoPath(projection);
+
+  const g = svg.append("g").attr("class","map-root");
+  const sphereLayer = g.append("g");
+  const countryLayer = g.append("g").attr("class","countries-group");
+  const journeyLayer = g.append("g").attr("class","journeys-group");
+
+  // Shadow circle for floating effect
+  sphereLayer.append("circle")
+    .attr("class", "globe-shadow")
+    .attr("cx", width/2)
+    .attr("cy", height/2 + 18)
+    .attr("r", 230 * 1.08)
+    .style("fill", "url(#globeShadow)")
+    .style("pointer-events", "none");
+
+  // Solid sphere background (sea)
+  sphereLayer.append("path")
+    .datum({type:"Sphere"})
+    .attr("class","sphere")
+    .attr("d", path);
+
+  // Minimal graticule (every 15 degrees)
+  sphereLayer.append("path")
+    .datum(d3.geoGraticule().step([15, 15])())
+    .attr("class","graticule")
+    .attr("d", path);
+
+  // Atmospheric glow overlay
+  sphereLayer.append("circle")
+    .attr("class", "atmosphere")
+    .attr("cx", width/2)
+    .attr("cy", height/2)
+    .attr("r", 230)
+    .style("fill", "url(#atmosphereGrad)")
+    .style("pointer-events", "none");
+
+  const tooltip = d3.select("#tooltip");
+  const backBtn = d3.select("#backBtn");
+  const panel = d3.select("#journeyPanel");
+  const toastEl = d3.select("#toast");
+  const instructions = d3.select("#instructions");
+
+  let zoomedCountry = null;
+  let currentScale = 230;
+  let timer = null;
+  let isDragging = false;
+
+  // Check if a point is visible on the front face of the globe
+  function isPointVisible(coords) {
+    const rotate = projection.rotate();
+    const center = [-rotate[0], -rotate[1]];
+    return d3.geoDistance(coords, center) < Math.PI / 2;
+  }
+
+  // Update globe projection and redraw all paths/elements
+  function updateGlobe() {
+    const scale = projection.scale();
+
+    // Redraw geometry paths
+    sphereLayer.select(".sphere").attr("d", path);
+    sphereLayer.select(".graticule").attr("d", path);
+    countryLayer.selectAll("path.country").attr("d", path);
+
+    // Redraw journey lines (curved on sphere)
+    journeyLayer.selectAll("path.route-path").attr("d", path);
+
+    // Update checkpoint labels and nodes (hide on back of globe)
+    journeyLayer.selectAll("g.checkpoint")
+      .attr("transform", d => {
+        const pts = projection(d.coords);
+        return `translate(${pts[0]},${pts[1]})`;
+      })
+      .style("display", d => isPointVisible(d.coords) ? null : "none");
+
+    // Scale overlay circles dynamically
+    sphereLayer.select(".atmosphere")
+      .attr("r", scale);
+
+    sphereLayer.select(".globe-shadow")
+      .attr("r", scale * 1.08)
+      .attr("cy", height/2 + scale * 0.08);
+  }
+
+  // Soft automatic spin animation
+  function startSpin() {
+    if (timer) timer.stop();
+    timer = d3.timer((elapsed) => {
+      if (zoomedCountry || isDragging) return;
+      const r = projection.rotate();
+      projection.rotate([r[0] + 0.12, r[1], r[2]]);
+      updateGlobe();
+    });
+  }
+
+  function stopSpin() {
+    if (timer) timer.stop();
+  }
+
+  // Setup drag logic
+  const drag = d3.drag()
+    .on("start", function() {
+      isDragging = true;
+      stopSpin();
+    })
+    .on("drag", function(event) {
+      if (zoomedCountry) return;
+      const r = projection.rotate();
+      const k = 75 / projection.scale();
+      projection.rotate([
+        r[0] + event.dx * k,
+        r[1] - event.dy * k
+      ]);
+      updateGlobe();
+    })
+    .on("end", function() {
+      isDragging = false;
+      if (!zoomedCountry) startSpin();
+    });
+
+  svg.call(drag);
+
+  function showToast(msg){
+    toastEl.text(msg).classed("show", true);
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toastEl.classed("show", false), 2200);
+  }
+
+  function positionTooltip(event, htmlBits){
+    tooltip.select("#tt-title").text(htmlBits.title);
+    tooltip.select("#tt-sub").text(htmlBits.sub);
+    tooltip.select("#tt-desc").text(htmlBits.desc || "");
+    tooltip
+      .style("left", (event.clientX) + "px")
+      .style("top", (event.clientY) + "px")
+      .classed("show", true);
+  }
+  function hideTooltip(){ tooltip.classed("show", false); }
+
+  /* =========================================================
+     LOAD WORLD DATA
+  ========================================================== */
+  d3.json("world.json").then(world => {
+    const countries = topojson.feature(world, world.objects.countries).features;
+
+    countryLayer.selectAll("path.country")
+      .data(countries)
+      .join("path")
+      .attr("class", d => "country" + (journeys[d.properties.name] ? " has-journey" : ""))
+      .attr("d", path)
+      .on("mousemove", function(event, d){
+        if (zoomedCountry) return;
+        const j = journeys[d.properties.name];
+        positionTooltip(event, {
+          title: d.properties.name,
+          sub: j ? j.stops.length + " checkpoint voyage" : "Not yet curated",
+          desc: j ? j.subtitle : "Enquire and we will chart something new."
+        });
+      })
+      .on("mouseenter", function(event, d){
+        if (zoomedCountry) return;
+        d3.select(this).classed("hovered", true).raise();
+        // Bring atmosphere to front so it overlays country highlights correctly
+        sphereLayer.select(".atmosphere").raise();
+        d3.select(this).style("filter","url(#softGlow)");
+      })
+      .on("mouseleave", function(event, d){
+        d3.select(this).classed("hovered", false).style("filter", null);
+        hideTooltip();
+      })
+      .on("click", function(event, d){
+        if (zoomedCountry) return;
+        const j = journeys[d.properties.name];
+        if (!j){
+          showToast(d.properties.name + " — journeys coming soon");
+          return;
+        }
+        hideTooltip();
+        zoomToCountry(d, j);
+      });
+
+    document.getElementById("loader").style.opacity = 0;
+    setTimeout(()=> document.getElementById("loader").style.display = "none", 650);
+    startSpin();
+  }).catch(err => {
+    document.getElementById("loader").querySelector(".ltext").textContent = "The atlas could not be reached — check your connection";
+    console.error(err);
+  });
+
+  /* =========================================================
+     ZOOM TO COUNTRY + DRAW spherical JOURNEY
+  ========================================================== */
+  function zoomToCountry(feature, journey){
+    zoomedCountry = feature.properties.name;
+    stopSpin();
+
+    countryLayer.selectAll("path.country")
+      .classed("dimmed", d => d !== feature)
+      .classed("locked", true)
+      .filter(d => d === feature)
+      .classed("hovered", false)
+      .style("filter", null);
+
+    const centroid = d3.geoCentroid(feature);
+    const bounds = d3.geoBounds(feature);
+    const dLon = Math.abs(bounds[1][0] - bounds[0][0]);
+    const dLat = Math.abs(bounds[1][1] - bounds[0][1]);
+    const maxAngle = Math.max(dLon, dLat, 6);
+    
+    // Dynamically calculate fitting scale based on country size
+    const targetScale = Math.max(380, Math.min(1000, 180 / maxAngle * 35));
+    
+    const r0 = projection.rotate();
+    const c0 = [-r0[0], -r0[1]];
+    const c1 = centroid;
+    
+    const s0 = projection.scale();
+    const s1 = targetScale;
+
+    const interpolateCenter = d3.geoInterpolate(c0, c1);
+    const interpolateScale = d3.interpolate(s0, s1);
+
+    d3.transition()
+      .duration(1400)
+      .ease(d3.easeCubicInOut)
+      .tween("render", () => {
+        return (t) => {
+          const center = interpolateCenter(t);
+          projection.rotate([-center[0], -center[1], 0]);
+          projection.scale(interpolateScale(t));
+          updateGlobe();
+        };
+      })
+      .end()
+      .then(() => {
+        drawJourney(journey, s1);
+        openPanel(feature.properties.name, journey);
+      })
+      .catch(() => {});
+
+    backBtn.classed("show", true);
+    instructions.style("opacity", 0);
+  }
+
+  function drawJourney(journey, scale){
+    journeyLayer.selectAll("*").remove();
+
+    // Create GeoJSON Feature for the journey path
+    const routeFeature = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: journey.stops.map(s => s.coords)
+      }
+    };
+
+    // Draw curved spherical path
+    journeyLayer.append("path")
+      .datum(routeFeature)
+      .attr("class","route-path")
+      .attr("d", path)
+      .style("opacity", 0);
+
+    const nodes = journeyLayer.selectAll("g.checkpoint")
+      .data(journey.stops)
+      .join("g")
+      .attr("class","checkpoint")
+      .attr("transform", d => {
+        const pts = projection(d.coords);
+        return `translate(${pts[0]},${pts[1]})`;
+      })
+      .style("display", d => isPointVisible(d.coords) ? null : "none")
+      .style("opacity", 0);
+
+    const r = 5.5;
+    const rOuter = 11;
+
+    nodes.append("circle").attr("class","journey-node-pulse").attr("r", rOuter);
+    nodes.append("circle").attr("class","ring").attr("r", rOuter * 0.7);
+    nodes.append("circle").attr("class","core").attr("r", r);
+
+    nodes.append("text")
+      .attr("x", 0).attr("y", -16)
+      .attr("text-anchor","middle")
+      .style("font-size", "10px")
+      .text((d,i) => "0" + (i+1));
+
+    nodes
+      .on("mousemove", function(event, d){
+        positionTooltip(event, {
+          title: d.name,
+          sub: Math.abs(d.coords[1]).toFixed(2) + "° " + (d.coords[1] >= 0 ? "N" : "S") + ", " + 
+               Math.abs(d.coords[0]).toFixed(2) + "° " + (d.coords[0] >= 0 ? "E" : "W"),
+          desc: d.desc
+        });
+      })
+      .on("mouseenter", function(event, d, i){
+        d3.select(this).classed("active", true).select("circle.core")
+          .transition().duration(180).attr("r", r * 1.8);
+        highlightStop(d.name, true);
+      })
+      .on("mouseleave", function(event, d){
+        d3.select(this).classed("active", false).select("circle.core")
+          .transition().duration(180).attr("r", r);
+        hideTooltip();
+        highlightStop(d.name, false);
+      });
+
+    // Fade in path and checkpoints
+    journeyLayer.selectAll(".route-path, .checkpoint")
+      .transition().duration(800)
+      .style("opacity", 1);
+  }
+
+  function highlightStop(name, on){
+    d3.selectAll(".stop").classed("hot", function(){
+      return d3.select(this).attr("data-name") === name && on;
+    });
+  }
+
+  /* =========================================================
+     JOURNEY PANEL
+  ========================================================== */
+  function openPanel(countryName, journey){
+    d3.select("#panelEyebrow").text(countryName + " — Curated Voyage");
+    d3.select("#panelTitle").text(journey.subtitle);
+    d3.select("#panelDesc").text(journey.desc);
+
+    const list = d3.select("#stopsList");
+    list.selectAll("*").remove();
+    const stops = list.selectAll(".stop").data(journey.stops).join("div")
+      .attr("class","stop")
+      .attr("data-name", d => d.name);
+
+    stops.append("div").attr("class","stop-coord")
+      .text(d => Math.abs(d.coords[1]).toFixed(2) + "° " + (d.coords[1] >= 0 ? "N" : "S") + ", " + 
+                 Math.abs(d.coords[0]).toFixed(2) + "° " + (d.coords[0] >= 0 ? "E" : "W"));
+    stops.append("div").attr("class","stop-name").text(d => d.name);
+    stops.append("div").attr("class","stop-desc").text(d => d.desc);
+
+    panel.classed("show", true);
+  }
+
+  function closeEverything(){
+    zoomedCountry = null;
+    panel.classed("show", false);
+    backBtn.classed("show", false);
+    instructions.style("opacity", 1);
+
+    journeyLayer.selectAll(".route-path, .checkpoint")
+      .transition().duration(300).style("opacity", 0)
+      .end().then(()=> journeyLayer.selectAll("*").remove()).catch(()=>{});
+
+    const r0 = projection.rotate();
+    const s0 = projection.scale();
+    const s1 = 230;
+
+    const interpolateCenter = d3.geoInterpolate([-r0[0], -r0[1]], [0, 0]);
+    const interpolateScale = d3.interpolate(s0, s1);
+
+    d3.transition()
+      .duration(1200)
+      .ease(d3.easeCubicInOut)
+      .tween("render", () => {
+        return (t) => {
+          const center = interpolateCenter(t);
+          projection.rotate([-center[0], -center[1], 0]);
+          projection.scale(interpolateScale(t));
+          updateGlobe();
+        };
+      })
+      .end()
+      .then(() => {
+        countryLayer.selectAll("path.country")
+          .classed("dimmed", false)
+          .classed("locked", false);
+        startSpin();
+      })
+      .catch(() => {});
+  }
+
+  d3.select("#backBtn").on("click", closeEverything);
+  d3.select("#closePanel").on("click", closeEverything);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && zoomedCountry) closeEverything();
+  });
+
+})();
+</script>
+</body>
+</html>
