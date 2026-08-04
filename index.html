@@ -92,18 +92,23 @@
   .sphere{ fill:url(#seaGradient); }
   .graticule{ fill:none; stroke:var(--line-soft); stroke-width:0.5; }
   .country{
-    fill:#131f30;
-    stroke:var(--line);
-    stroke-width:0.6;
+    fill:#070d14;
+    stroke:rgba(201,162,75,0.06);
+    stroke-width:0.5;
     vector-effect:non-scaling-stroke;
     transition:fill 480ms cubic-bezier(.2,.7,.3,1), stroke 480ms ease;
+    cursor:default;
+  }
+  .country.has-journey{
+    fill:#122135;
+    stroke:rgba(201,162,75,0.48);
+    stroke-width:0.75;
     cursor:pointer;
   }
-  .country.has-journey{ fill:#16273b; }
   .country.hovered{
     fill:url(#brassFill);
     stroke:var(--champagne);
-    stroke-width:1.1;
+    stroke-width:1.2;
   }
   .country.dimmed{ opacity:0.16; }
   .country.locked{ pointer-events:none; }
@@ -353,59 +358,82 @@
   /* =========================================================
      JOURNEY DATA — curated countries with checkpoints
   ========================================================== */
+  const displayNames = {
+    "Bosnia and Herz.": "Bosnia & Herzegovina",
+    "Macedonia": "North Macedonia"
+  };
+
   const journeys = {
-    "Italy": {
-      subtitle: "Three Cities, One Renaissance",
-      desc: "From imperial ruins to Tuscan hills and canal light — a slow arc through Italy's three defining capitals.",
+    "Croatia": {
+      subtitle: "The Adriatic Pearls",
+      desc: "From the walled streets of Dubrovnik to the historic waterfront of Split and the capitals charm.",
       stops: [
-        { name:"Rome", coords:[12.4964,41.9028], desc:"Begin among the ruins — the Forum at dawn, before the crowds arrive." },
-        { name:"Florence", coords:[11.2558,43.7696], desc:"Two nights beneath the Duomo, with a private Uffizi hour after closing." },
-        { name:"Venice", coords:[12.3155,45.4408], desc:"Arrive by water taxi at dusk; close the journey with a Grand Canal dinner." }
-      ]
-    },
-    "France": {
-      subtitle: "Capital to Coastline",
-      desc: "Paris atelier mornings give way to Provençal light and the hush of the Riviera off-season.",
-      stops: [
-        { name:"Paris", coords:[2.3522,48.8566], desc:"Left Bank ateliers, a private Louvre wing, dinner on the Seine." },
-        { name:"Lyon", coords:[4.8357,45.7640], desc:"A culinary interlude — bouchons, silk quarters, the Presqu'île at night." },
-        { name:"Nice", coords:[7.2620,43.7102], desc:"Close on the Promenade — pastel façades and the scent of the Mediterranean." }
-      ]
-    },
-    "Japan": {
-      subtitle: "Neon to Stillness",
-      desc: "Tokyo's velocity, Kyoto's quiet gardens, and Osaka's evening kitchens — Japan in contrast.",
-      stops: [
-        { name:"Tokyo", coords:[139.6917,35.6895], desc:"Shibuya at night, a tea ceremony at dawn, tailored to your pace." },
-        { name:"Kyoto", coords:[135.7681,35.0116], desc:"Private access to a bamboo grove before the gates open to the public." },
-        { name:"Osaka", coords:[135.5023,34.6937], desc:"An evening of Dotonbori kitchens — chosen, not stumbled upon." }
-      ]
-    },
-    "Egypt": {
-      subtitle: "The River of Kings",
-      desc: "A journey up the Nile, from Cairo's museums to the temples of the Upper Kingdom.",
-      stops: [
-        { name:"Cairo", coords:[31.2357,30.0444], desc:"Sunrise at Giza before the gates open, then the new Grand Museum." },
-        { name:"Luxor", coords:[32.6396,25.6872], desc:"Balloon over the Valley of the Kings at first light." },
-        { name:"Aswan", coords:[32.8998,24.0889], desc:"A felucca at golden hour, ending near the temple of Philae." }
+        { name:"Zagreb", coords:[15.9780, 45.8150], desc:"The vibrant upper town, stone gates, and bustling markets of the capital." },
+        { name:"Split", coords:[16.4402, 43.5081], desc:"Stroll the ancient halls of Diocletian Palace, meeting the Adriatic tide." },
+        { name:"Dubrovnik", coords:[18.0944, 42.6507], desc:"Walk the medieval stone walls overlooking the azure sea at sunset." }
       ]
     },
     "Greece": {
       subtitle: "Marble & Aegean Light",
-      desc: "From the Acropolis to the volcanic cliffs and whitewashed lanes of the Cyclades.",
+      desc: "From the Acropolis in Athens to the volcanic cliffs and whitewashed lanes of the Cyclades.",
       stops: [
-        { name:"Athens", coords:[23.7275,37.9838], desc:"The Acropolis at first light, then the old city on foot." },
-        { name:"Santorini", coords:[25.4615,36.3932], desc:"Caldera-view suite, sunset in Oia timed to the last ferry's wake." },
-        { name:"Mykonos", coords:[25.3289,37.4467], desc:"Windmills, hidden coves, a final dinner above Little Venice." }
+        { name:"Athens", coords:[23.7275, 37.9838], desc:"The Acropolis at first light, then exploring the old Plaka district on foot." },
+        { name:"Santorini", coords:[25.4615, 36.3932], desc:"Caldera-view cliffs, private sunsets, and volcanic vineyard tastings." },
+        { name:"Mykonos", coords:[25.3289, 37.4467], desc:"Iconic windmills, hidden sandy coves, and dinner above Little Venice." }
       ]
     },
-    "Thailand": {
-      subtitle: "Temples, Hills & Tide",
-      desc: "Bangkok's temples, the mountain calm of Chiang Mai, and the tides of the Andaman coast.",
+    "Slovenia": {
+      subtitle: "Alps to the Adriatic Coast",
+      desc: "Emerald alpine waters of Bled, deep caverns of Postojna, and coastal Venetian architecture.",
       stops: [
-        { name:"Bangkok", coords:[100.5018,13.7563], desc:"Riverside temples by longtail boat, away from the main channel." },
-        { name:"Chiang Mai", coords:[98.9853,18.7883], desc:"An ethical elephant sanctuary and a lantern-lit old town evening." },
-        { name:"Phuket", coords:[98.3923,7.8804], desc:"Close the journey on a private stretch of Andaman shoreline." }
+        { name:"Ljubljana", coords:[14.5058, 46.0569], desc:"Bridges and baroque alleys along the river beneath the castle hill." },
+        { name:"Lake Bled", coords:[14.1146, 46.3683], desc:"Row to the island church in a pletna boat, surrounded by snow-capped peaks." },
+        { name:"Piran", coords:[13.5684, 45.5276], desc:"Venetian-gothic squares and salt pans on the narrow Adriatic peninsula." }
+      ]
+    },
+    "Bosnia and Herz.": {
+      subtitle: "East Meets West",
+      desc: "Sarajevo's Ottoman old bazaar, the famous stone arch of Mostar, and refreshing wild waterfalls.",
+      stops: [
+        { name:"Sarajevo", coords:[18.4131, 43.8563], desc:"Coppersmith alleys, mountain views, and crossroads of cultures." },
+        { name:"Mostar", coords:[17.8078, 43.3430], desc:"The rebuilt 16th-century bridge connecting riverbanks of stone." },
+        { name:"Kravica", coords:[17.6083, 43.1585], desc:"Emerald cascades and lush forests, a serene natural amphitheater." }
+      ]
+    },
+    "Bulgaria": {
+      subtitle: "Valley of Kings & Black Sea Shores",
+      desc: "Sofia's grand golden domes, the antique theater of Plovdiv, and coastal Nessebar.",
+      stops: [
+        { name:"Sofia", coords:[23.3219, 42.6977], desc:"Underground Roman ruins and the massive Alexander Nevsky cathedral." },
+        { name:"Plovdiv", coords:[24.7453, 42.1354], desc:"Winding cobbled streets of the old town and the 2nd-century theater." },
+        { name:"Nessebar", coords:[27.7182, 42.6589], desc:"An ancient island-town with windmills and Byzantine church ruins." }
+      ]
+    },
+    "Albania": {
+      subtitle: "The Albanian Riviera",
+      desc: "The Ottoman castle houses of Gjirokastër, ruins of Butrint, and crystal-clear waters.",
+      stops: [
+        { name:"Tirana", coords:[19.8189, 41.3275], desc:"Vibrant pastel buildings and the historic central Skanderbeg Square." },
+        { name:"Gjirokastër", coords:[20.1389, 40.0758], desc:"Stone-roofed fortress houses and the old bazaar steep slopes." },
+        { name:"Ksamil", coords:[20.0050, 39.7761], desc:"Crystal beaches and islands, resting along the Ionian sea channel." }
+      ]
+    },
+    "Kosovo": {
+      subtitle: "Historic Canyons & Alleys",
+      desc: "Vibrant cafes of Pristina, the Ottoman charm of Prizren, and the rugged mountain passes.",
+      stops: [
+        { name:"Pristina", coords:[21.1655, 42.6629], desc:"Modern energy, vibrant macchiato culture, and the iconic library." },
+        { name:"Prizren", coords:[20.7415, 42.2153], desc:"Cross the stone bridge to the old mosques and hilltop fortress." },
+        { name:"Peja", coords:[20.2917, 42.6592], desc:"Gateway to the massive, vertical cliffs of Rugova Canyon." }
+      ]
+    },
+    "Macedonia": {
+      subtitle: "UNESCO Waters & Stone Bridges",
+      desc: "Skopje's neoclassical plazas, the sublime lakeshore of Ohrid, and mountain parks.",
+      stops: [
+        { name:"Skopje", coords:[21.4314, 41.9965], desc:"The grand stone bridge over the Vardar river and the fortress peak." },
+        { name:"Ohrid", coords:[20.8016, 41.1172], desc:"UNESCO ancient churches, narrow lake cliffs, and clear pristine waters." },
+        { name:"Mavrovo", coords:[20.7322, 41.7042], desc:"Peaceful mountain peaks and the famous half-submerged lake church." }
       ]
     }
   };
@@ -513,6 +541,7 @@
   // Update globe projection and redraw all paths/elements
   function updateGlobe() {
     const scale = projection.scale();
+    const translate = projection.translate();
 
     // Redraw geometry paths
     sphereLayer.select(".sphere").attr("d", path);
@@ -532,11 +561,14 @@
 
     // Scale overlay circles dynamically
     sphereLayer.select(".atmosphere")
+      .attr("cx", translate[0])
+      .attr("cy", translate[1])
       .attr("r", scale);
 
     sphereLayer.select(".globe-shadow")
-      .attr("r", scale * 1.08)
-      .attr("cy", height/2 + scale * 0.08);
+      .attr("cx", translate[0])
+      .attr("cy", translate[1] + scale * 0.08)
+      .attr("r", scale * 1.08);
   }
 
   // Soft automatic spin animation
@@ -608,30 +640,33 @@
       .on("mousemove", function(event, d){
         if (zoomedCountry) return;
         const j = journeys[d.properties.name];
+        if (!j) return;
+        const dispName = displayNames[d.properties.name] || d.properties.name;
         positionTooltip(event, {
-          title: d.properties.name,
-          sub: j ? j.stops.length + " checkpoint voyage" : "Not yet curated",
-          desc: j ? j.subtitle : "Enquire and we will chart something new."
+          title: dispName,
+          sub: j.stops.length + " checkpoint voyage",
+          desc: j.subtitle
         });
       })
       .on("mouseenter", function(event, d){
         if (zoomedCountry) return;
+        const j = journeys[d.properties.name];
+        if (!j) return;
         d3.select(this).classed("hovered", true).raise();
         // Bring atmosphere to front so it overlays country highlights correctly
         sphereLayer.select(".atmosphere").raise();
         d3.select(this).style("filter","url(#softGlow)");
       })
       .on("mouseleave", function(event, d){
+        const j = journeys[d.properties.name];
+        if (!j) return;
         d3.select(this).classed("hovered", false).style("filter", null);
         hideTooltip();
       })
       .on("click", function(event, d){
         if (zoomedCountry) return;
         const j = journeys[d.properties.name];
-        if (!j){
-          showToast(d.properties.name + " — journeys coming soon");
-          return;
-        }
+        if (!j) return;
         hideTooltip();
         zoomToCountry(d, j);
       });
@@ -674,8 +709,13 @@
     const s0 = projection.scale();
     const s1 = targetScale;
 
+    const t0 = projection.translate();
+    // Offset the center coordinate to the left to compensate for sidebar panel width
+    const t1 = [(width - 340)/2 + 15, height/2];
+
     const interpolateCenter = d3.geoInterpolate(c0, c1);
     const interpolateScale = d3.interpolate(s0, s1);
+    const interpolateTranslate = d3.interpolate(t0, t1);
 
     d3.transition()
       .duration(1400)
@@ -685,6 +725,7 @@
           const center = interpolateCenter(t);
           projection.rotate([-center[0], -center[1], 0]);
           projection.scale(interpolateScale(t));
+          projection.translate(interpolateTranslate(t));
           updateGlobe();
         };
       })
@@ -702,12 +743,41 @@
   function drawJourney(journey, scale){
     journeyLayer.selectAll("*").remove();
 
-    // Create GeoJSON Feature for the journey path
+    // Generate curved points between each consecutive stop (flight path style curve)
+    const stops = journey.stops;
+    const curvedCoords = [];
+
+    for (let i = 0; i < stops.length - 1; i++) {
+      const A = stops[i].coords;
+      const B = stops[i+1].coords;
+      const interpolate = d3.geoInterpolate(A, B);
+
+      const dLon = B[0] - A[0];
+      const dLat = B[1] - A[1];
+      const len = Math.sqrt(dLon * dLon + dLat * dLat);
+      const offsetScale = Math.min(8, len * 0.22); // parabolic scale offset
+      // Perpendicular vector for curved arc
+      const perp = len > 0 ? [-dLat / len, dLon / len] : [0, 0];
+
+      const segments = 25;
+      for (let j = 0; j <= segments; j++) {
+        // Skip adding the starting point if it's not the first segment to avoid duplicates
+        if (j === 0 && i > 0) continue;
+        const t = j / segments;
+        const base = interpolate(t);
+        const bend = Math.sin(t * Math.PI) * offsetScale;
+        curvedCoords.push([
+          base[0] + perp[0] * bend,
+          base[1] + perp[1] * bend
+        ]);
+      }
+    }
+
     const routeFeature = {
       type: "Feature",
       geometry: {
         type: "LineString",
-        coordinates: journey.stops.map(s => s.coords)
+        coordinates: curvedCoords
       }
     };
 
@@ -779,7 +849,8 @@
      JOURNEY PANEL
   ========================================================== */
   function openPanel(countryName, journey){
-    d3.select("#panelEyebrow").text(countryName + " — Curated Voyage");
+    const dispName = displayNames[countryName] || countryName;
+    d3.select("#panelEyebrow").text(dispName + " — Curated Voyage");
     d3.select("#panelTitle").text(journey.subtitle);
     d3.select("#panelDesc").text(journey.desc);
 
@@ -794,6 +865,49 @@
                  Math.abs(d.coords[0]).toFixed(2) + "° " + (d.coords[0] >= 0 ? "E" : "W"));
     stops.append("div").attr("class","stop-name").text(d => d.name);
     stops.append("div").attr("class","stop-desc").text(d => d.desc);
+
+    // Sidebar hover/click syncing with map
+    stops
+      .on("mouseenter", function(event, d) {
+        d3.select(this).classed("hot", true);
+        
+        // Highlight the node on the globe
+        d3.selectAll("g.checkpoint")
+          .filter(node => node.name === d.name)
+          .classed("active", true)
+          .select("circle.core")
+          .transition().duration(180)
+          .attr("r", 5.5 * 1.8);
+      })
+      .on("mouseleave", function(event, d) {
+        d3.select(this).classed("hot", false);
+        
+        // Remove highlight from the node on the globe
+        d3.selectAll("g.checkpoint")
+          .filter(node => node.name === d.name)
+          .classed("active", false)
+          .select("circle.core")
+          .transition().duration(180)
+          .attr("r", 5.5);
+      })
+      .on("click", function(event, d) {
+        // Smoothly rotate the globe to center the clicked checkpoint
+        const r0 = projection.rotate();
+        const c0 = [-r0[0], -r0[1]];
+        const c1 = d.coords;
+        const interpolateCenter = d3.geoInterpolate(c0, c1);
+        
+        d3.transition()
+          .duration(1000)
+          .ease(d3.easeCubicInOut)
+          .tween("render", () => {
+            return (t) => {
+              const center = interpolateCenter(t);
+              projection.rotate([-center[0], -center[1], 0]);
+              updateGlobe();
+            };
+          });
+      });
 
     panel.classed("show", true);
   }
@@ -812,8 +926,12 @@
     const s0 = projection.scale();
     const s1 = 230;
 
+    const t0 = projection.translate();
+    const t1 = [width/2, height/2];
+
     const interpolateCenter = d3.geoInterpolate([-r0[0], -r0[1]], [0, 0]);
     const interpolateScale = d3.interpolate(s0, s1);
+    const interpolateTranslate = d3.interpolate(t0, t1);
 
     d3.transition()
       .duration(1200)
@@ -823,6 +941,7 @@
           const center = interpolateCenter(t);
           projection.rotate([-center[0], -center[1], 0]);
           projection.scale(interpolateScale(t));
+          projection.translate(interpolateTranslate(t));
           updateGlobe();
         };
       })
