@@ -10,24 +10,25 @@
 <script src="topojson-client.min.js"></script>
 <style>
   :root{
-    --ink:#0a0f1a;
-    --ink-2:#0e1526;
-    --panel:#0f1a26;
-    --sea:#0d1b22;
+    --bg:#f9f9f9;
+    --ink:#182D09;
+    --panel:#FFFBF6;
+    --sea:#e2ebed;
+    --accent:#AF6348;
     --brass:#c9a24b;
-    --brass-light:#e9d4a0;
-    --champagne:#f1e3bd;
-    --parchment:#eadfc9;
-    --muted:#7f8aa0;
-    --line:rgba(201,162,75,0.22);
-    --line-soft:rgba(201,162,75,0.10);
+    --muted:#7E7E7E;
+    --line:rgba(24, 45, 9, 0.15);
+    --line-soft:rgba(24, 45, 9, 0.06);
+    --text-primary:#0A0A0A;
+    --text-secondary:#2B3D39;
+    --parchment:#2B3D39;
+    --champagne:#182D09;
   }
   *{box-sizing:border-box;}
   html,body{
     margin:0; padding:0; width:100%; height:100%;
-    background:
-      radial-gradient(ellipse 120% 90% at 50% 0%, #101d2f 0%, var(--ink) 55%, #060a12 100%);
-    color:var(--parchment);
+    background:var(--bg);
+    color:var(--text-primary);
     font-family:'Manrope', sans-serif;
     overflow:hidden;
     display:flex; align-items:center; justify-content:center;
@@ -36,10 +37,10 @@
     position:relative;
     width:92vw; height:82vh;
     max-width:1200px; max-height:750px; min-height:500px;
-    background:rgba(10,15,26,0.85);
-    border:1px solid rgba(201,162,75,0.18);
+    background:#FFFBF6;
+    border:1px solid #D1D5DB;
     border-radius:6px;
-    box-shadow:0 24px 64px rgba(0, 0, 0, 0.7);
+    box-shadow:0 16px 48px rgba(24, 45, 9, 0.06);
     overflow:hidden;
   }
   .stage{
@@ -56,9 +57,9 @@
   .zoom-controls button{
     width:36px; height:36px;
     border-radius:50%;
-    background:rgba(15,26,38,0.85);
-    border:1px solid var(--line);
-    color:var(--champagne);
+    background:rgba(255, 251, 246, 0.85);
+    border:1px solid #D1D5DB;
+    color:var(--ink);
     font-size:18px; font-weight:600;
     cursor:pointer;
     display:flex; align-items:center; justify-content:center;
@@ -67,9 +68,9 @@
     transition:background 220ms ease, border-color 220ms ease, transform 180ms ease;
   }
   .zoom-controls button:hover{
-    background:rgba(201,162,75,0.18);
-    border-color:var(--brass);
-    color:var(--brass-light);
+    background:rgba(24, 45, 9, 0.08);
+    border-color:var(--ink);
+    color:var(--ink);
     transform:scale(1.08);
   }
   .zoom-controls button:active{
@@ -86,17 +87,17 @@
     font-weight:500;
     font-size:22px;
     letter-spacing:0.14em;
-    color:var(--champagne);
+    color:var(--ink);
     text-transform:uppercase;
   }
-  .brand .mark span{ color:var(--brass); font-style:italic; font-weight:300; }
+  .brand .mark span{ color:var(--accent); font-style:italic; font-weight:300; }
   .brand .tag{
     margin-top:6px;
     font-family:'IBM Plex Mono', monospace;
     font-size:10.5px;
     letter-spacing:0.12em;
     text-transform:uppercase;
-    color:var(--muted);
+    color:var(--text-secondary);
   }
 
   .instructions{
@@ -104,23 +105,26 @@
     font-family:'IBM Plex Mono', monospace;
     font-size:10.5px;
     letter-spacing:0.08em;
-    color:var(--muted);
+    color:var(--text-secondary);
     display:flex; align-items:center; gap:10px;
     transition:opacity .5s ease;
   }
   .instructions .dot{
     width:5px; height:5px; border-radius:50%;
-    background:var(--brass);
-    box-shadow:0 0 8px var(--brass);
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
     animation:pulse-dot 2.4s ease-in-out infinite;
   }
   @keyframes pulse-dot{ 0%,100%{opacity:.4} 50%{opacity:1} }
 
   .compass{
     position:absolute; top:24px; right:28px; z-index:20;
-    opacity:0.4;
+    opacity:0.5;
     width:56px; height:56px;
   }
+  .compass circle { stroke: var(--accent) !important; }
+  .compass path { fill: var(--accent) !important; }
+  .compass text { fill: var(--ink) !important; }
 
   /* ---------- Map ---------- */
   svg#globe{
@@ -130,34 +134,34 @@
   .sphere{ fill:url(#seaGradient); }
   .graticule{ fill:none; stroke:var(--line-soft); stroke-width:0.5; }
   .country{
-    fill:#070d14;
-    stroke:rgba(201,162,75,0.06);
+    fill:#f4f3ee;
+    stroke:rgba(24, 45, 9, 0.08);
     stroke-width:0.5;
     vector-effect:non-scaling-stroke;
     transition:fill 480ms cubic-bezier(.2,.7,.3,1), stroke 480ms ease;
     cursor:default;
   }
   .country.has-journey{
-    fill:#122135;
-    stroke:rgba(201,162,75,0.48);
+    fill:#dce7d5;
+    stroke:rgba(24, 45, 9, 0.45);
     stroke-width:0.75;
     cursor:pointer;
   }
   .country.hovered{
     fill:url(#brassFill);
-    stroke:var(--champagne);
+    stroke:var(--accent);
     stroke-width:1.2;
   }
-  .country.dimmed{ opacity:0.16; }
+  .country.dimmed{ opacity:0.22; }
   .country.locked{ pointer-events:none; }
 
   .journey-node{
-    fill:var(--brass);
+    fill:var(--accent);
     opacity:0.85;
   }
   .journey-node-pulse{
     fill:none;
-    stroke:var(--brass);
+    stroke:var(--accent);
     stroke-width:1;
     opacity:0.55;
     animation:ping 2.6s ease-out infinite;
@@ -171,9 +175,9 @@
 
   .route-path{
     fill:none;
-    stroke:var(--brass-light);
-    stroke-width:1.4;
-    stroke-dasharray:1 6;
+    stroke:var(--accent);
+    stroke-width:1.5;
+    stroke-dasharray:3 4;
     stroke-linecap:round;
     vector-effect:non-scaling-stroke;
     opacity:0;
@@ -182,18 +186,19 @@
   @keyframes dash-flow{ to{ stroke-dashoffset:-500; } }
 
   .checkpoint circle.ring{
-    fill:none; stroke:var(--brass-light); stroke-width:1; vector-effect:non-scaling-stroke;
+    fill:none; stroke:var(--accent); stroke-width:1; vector-effect:non-scaling-stroke;
   }
   .checkpoint circle.core{
-    fill:var(--ink); stroke:var(--brass-light); stroke-width:1.6; vector-effect:non-scaling-stroke;
+    fill:#FEFEFE; stroke:var(--accent); stroke-width:1.8; vector-effect:non-scaling-stroke;
     transition:fill 220ms ease, r 220ms ease;
   }
   .checkpoint{ cursor:pointer; opacity:0; }
-  .checkpoint.active circle.core{ fill:var(--brass-light); }
+  .checkpoint.active circle.core{ fill:var(--accent); }
   .checkpoint text{
     font-family:'IBM Plex Mono', monospace;
-    font-size:9px;
-    fill:var(--muted);
+    font-size:9.5px;
+    font-weight:500;
+    fill:var(--ink);
     letter-spacing:0.06em;
   }
 
@@ -201,37 +206,38 @@
   #tooltip{
     position:fixed; z-index:60; pointer-events:none;
     padding:10px 14px;
-    background:rgba(10,15,26,0.88);
-    border:1px solid var(--line);
+    background:rgba(255,251,246,0.95);
+    border:1px solid #D1D5DB;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius:2px;
     opacity:0; transform:translate(14px, -50%) translateY(10px);
     transition:opacity 180ms ease, transform 180ms ease;
     max-width:230px;
+    box-shadow:0 8px 24px rgba(24, 45, 9, 0.05);
   }
   #tooltip.show{ opacity:1; transform:translate(14px,-50%) translateY(0); }
   #tooltip .t-title{
-    font-family:'Fraunces', serif; font-size:15px; color:var(--champagne);
+    font-family:'Fraunces', serif; font-size:15px; color:var(--ink);
     letter-spacing:0.02em;
   }
   #tooltip .t-sub{
     font-family:'IBM Plex Mono', monospace; font-size:9.5px;
-    color:var(--brass); letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--accent); letter-spacing:0.08em; text-transform:uppercase;
     margin-top:4px;
   }
   #tooltip .t-desc{
-    font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.5;
+    font-size:11.5px; color:var(--text-secondary); margin-top:6px; line-height:1.5;
   }
 
   /* ---------- Back control ---------- */
   #backBtn{
     position:absolute; top:24px; left:50%; transform:translateX(-50%) translateY(-8px);
     z-index:30;
-    background:rgba(15,26,38,0.7);
-    border:1px solid var(--line);
+    background:rgba(255, 251, 246, 0.9);
+    border:1px solid #D1D5DB;
     backdrop-filter: blur(8px);
-    color:var(--champagne);
+    color:var(--ink);
     font-family:'IBM Plex Mono', monospace;
     font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase;
     padding:10px 20px;
@@ -242,15 +248,15 @@
     transition:opacity 420ms ease, transform 420ms ease, border-color 220ms ease;
   }
   #backBtn.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
-  #backBtn:hover{ border-color:var(--brass); }
-  #backBtn .arrow{ color:var(--brass); font-size:13px; }
+  #backBtn:hover{ border-color:var(--accent); color:var(--accent); }
+  #backBtn .arrow{ color:var(--accent); font-size:13px; }
 
   /* ---------- Journey panel ---------- */
   #journeyPanel{
     position:absolute; top:0; right:0; height:100%;
     width:340px;
-    background:linear-gradient(180deg, rgba(14,21,38,0.92), rgba(10,15,26,0.96));
-    border-left:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,251,246,0.96), rgba(240,237,230,0.99));
+    border-left:1px solid #D1D5DB;
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     transform:translateX(100%);
@@ -262,14 +268,14 @@
   #journeyPanel.show{ transform:translateX(0); }
   #journeyPanel .eyebrow{
     font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.16em;
-    color:var(--brass); text-transform:uppercase;
+    color:var(--accent); text-transform:uppercase;
   }
   #journeyPanel h2{
     font-family:'Fraunces', serif; font-weight:500; font-size:30px;
-    color:var(--champagne); margin:8px 0 4px; letter-spacing:0.01em;
+    color:var(--ink); margin:8px 0 4px; letter-spacing:0.01em;
   }
   #journeyPanel .country-desc{
-    font-size:12.5px; color:var(--muted); line-height:1.7; margin-bottom:30px;
+    font-size:12.5px; color:var(--text-secondary); line-height:1.7; margin-bottom:30px;
   }
   .stop{
     position:relative;
@@ -282,19 +288,19 @@
     content:'';
     position:absolute; left:-4.5px; top:2px;
     width:8px; height:8px; border-radius:50%;
-    background:var(--ink); border:1.6px solid var(--brass-light);
+    background:#FEFEFE; border:1.6px solid var(--accent);
   }
-  .stop.hot::before{ background:var(--brass-light); }
+  .stop.hot::before{ background:var(--accent); }
   .stop .stop-coord{
     font-family:'IBM Plex Mono', monospace; font-size:9.5px;
     color:var(--muted); letter-spacing:0.06em;
   }
   .stop .stop-name{
-    font-family:'Fraunces', serif; font-size:17px; color:var(--parchment);
+    font-family:'Fraunces', serif; font-size:17px; color:var(--ink);
     margin:3px 0 5px;
   }
   .stop .stop-desc{
-    font-size:11.5px; color:var(--muted); line-height:1.6;
+    font-size:11.5px; color:var(--text-secondary); line-height:1.6;
   }
 
   #closePanel{
@@ -303,17 +309,17 @@
     font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.1em;
     cursor:pointer;
   }
-  #closePanel:hover{ color:var(--brass-light); }
+  #closePanel:hover{ color:var(--accent); }
 
   /* ---------- Toast ---------- */
   #toast{
     position:absolute; bottom:90px; left:50%;
     transform:translateX(-50%) translateY(8px);
-    background:rgba(15,26,38,0.9);
-    border:1px solid var(--line);
+    background:rgba(255,251,246,0.95);
+    border:1px solid #D1D5DB;
     padding:11px 22px;
     font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.08em;
-    color:var(--champagne);
+    color:var(--accent);
     opacity:0; pointer-events:none;
     transition:opacity 320ms ease, transform 320ms ease;
     z-index:50; text-transform:uppercase;
@@ -322,13 +328,13 @@
 
   #loader{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    flex-direction:column; gap:14px; z-index:100; background:var(--ink);
+    flex-direction:column; gap:14px; z-index:100; background:#FFFBF6;
     transition:opacity 600ms ease;
   }
   #loader .ring{
     width:34px; height:34px; border-radius:50%;
-    border:1px solid var(--line);
-    border-top-color:var(--brass);
+    border:2px solid #E5E7EB;
+    border-top-color:var(--ink);
     animation:spin 1s linear infinite;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -489,31 +495,31 @@
   const width = 960, height = 620;
   const defs = svg.append("defs");
 
-  // Sea/Ocean gradient
+  // Sea/Ocean gradient (light mode)
   const seaGrad = defs.append("radialGradient").attr("id","seaGradient")
     .attr("cx","50%").attr("cy","38%").attr("r","70%");
-  seaGrad.append("stop").attr("offset","0%").attr("stop-color","#0b1626");
-  seaGrad.append("stop").attr("offset","100%").attr("stop-color","#050a12");
+  seaGrad.append("stop").attr("offset","0%").attr("stop-color","#edf4f6");
+  seaGrad.append("stop").attr("offset","100%").attr("stop-color","#d4e4e7");
 
-  // Brass/gold gradient for country fills
+  // Accented terracotta gradient for country hover fills
   const brassGrad = defs.append("linearGradient").attr("id","brassFill")
     .attr("x1","0%").attr("y1","0%").attr("x2","100%").attr("y2","100%");
-  brassGrad.append("stop").attr("offset","0%").attr("stop-color","#e9d4a0");
-  brassGrad.append("stop").attr("offset","100%").attr("stop-color","#c9a24b");
+  brassGrad.append("stop").attr("offset","0%").attr("stop-color","#c4795c");
+  brassGrad.append("stop").attr("offset","100%").attr("stop-color","#AF6348");
 
-  // Shadow under the globe for 3D depth
+  // Shadow under the globe for 3D depth in light mode
   const shadowGrad = defs.append("radialGradient").attr("id","globeShadow")
     .attr("cx","50%").attr("cy","50%").attr("r","50%");
-  shadowGrad.append("stop").attr("offset","60%").attr("stop-color","rgba(6,10,18,0.95)");
-  shadowGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(6,10,18,0)");
+  shadowGrad.append("stop").attr("offset","60%").attr("stop-color","rgba(24,45,9,0.12)");
+  shadowGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(24,45,9,0)");
 
-  // Atmos/edge glow gradient for a premium rim light
+  // Atmos/edge glow gradient for a premium light-mode rim light
   const atmosGrad = defs.append("radialGradient").attr("id","atmosphereGrad")
     .attr("cx","50%").attr("cy","50%").attr("r","50%")
     .attr("fx","40%").attr("fy","40%");
-  atmosGrad.append("stop").attr("offset","80%").attr("stop-color","rgba(201,162,75,0.0)");
-  atmosGrad.append("stop").attr("offset","96%").attr("stop-color","rgba(201,162,75,0.18)");
-  atmosGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(201,162,75,0.40)");
+  atmosGrad.append("stop").attr("offset","80%").attr("stop-color","rgba(255,255,255,0.0)");
+  atmosGrad.append("stop").attr("offset","96%").attr("stop-color","rgba(255,255,255,0.40)");
+  atmosGrad.append("stop").attr("offset","100%").attr("stop-color","rgba(255,255,255,0.85)");
 
   const glow = defs.append("filter").attr("id","softGlow").attr("x","-60%").attr("y","-60%").attr("width","220%").attr("height","220%");
   glow.append("feGaussianBlur").attr("stdDeviation","3.2").attr("result","blur");
@@ -695,6 +701,7 @@
       })
       .on("mouseenter", function(event, d){
         if (zoomedCountry) return;
+        stopSpin(); // Hovering stops rotation
         const j = journeys[d.properties.name];
         if (!j) return;
         d3.select(this).classed("hovered", true).raise();
@@ -703,6 +710,7 @@
         d3.select(this).style("filter","url(#softGlow)");
       })
       .on("mouseleave", function(event, d){
+        if (!zoomedCountry && !isDragging) startSpin(); // Resume rotation when not hovered
         const j = journeys[d.properties.name];
         if (!j) return;
         d3.select(this).classed("hovered", false).style("filter", null);
@@ -718,8 +726,7 @@
 
     document.getElementById("loader").style.opacity = 0;
     setTimeout(()=> document.getElementById("loader").style.display = "none", 650);
-    // Keep spin disabled on load to preserve focus on curation region
-    updateGlobe();
+    startSpin(); // Keep rotation running initially
   }).catch(err => {
     document.getElementById("loader").querySelector(".ltext").textContent = "The atlas could not be reached — check your connection";
     console.error(err);
@@ -996,6 +1003,7 @@
         countryLayer.selectAll("path.country")
           .classed("dimmed", false)
           .classed("locked", false);
+        startSpin();
       })
       .catch(() => {});
   }
