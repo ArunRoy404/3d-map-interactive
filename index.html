@@ -30,16 +30,55 @@
     color:var(--parchment);
     font-family:'Manrope', sans-serif;
     overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .map-explorer{
+    position:relative;
+    width:92vw; height:82vh;
+    max-width:1200px; max-height:750px; min-height:500px;
+    background:rgba(10,15,26,0.85);
+    border:1px solid rgba(201,162,75,0.18);
+    border-radius:6px;
+    box-shadow:0 24px 64px rgba(0, 0, 0, 0.7);
+    overflow:hidden;
   }
   .stage{
     position:relative;
-    width:100vw; height:100vh;
+    width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .zoom-controls{
+    position:absolute; bottom:24px; right:28px;
+    display:flex; flex-direction:column; gap:8px;
+    z-index:30;
+  }
+  .zoom-controls button{
+    width:36px; height:36px;
+    border-radius:50%;
+    background:rgba(15,26,38,0.85);
+    border:1px solid var(--line);
+    color:var(--champagne);
+    font-size:18px; font-weight:600;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition:background 220ms ease, border-color 220ms ease, transform 180ms ease;
+  }
+  .zoom-controls button:hover{
+    background:rgba(201,162,75,0.18);
+    border-color:var(--brass);
+    color:var(--brass-light);
+    transform:scale(1.08);
+  }
+  .zoom-controls button:active{
+    transform:scale(0.95);
   }
 
   /* ---------- Brand chrome ---------- */
   .brand{
-    position:absolute; top:36px; left:40px; z-index:20;
+    position:absolute; top:24px; left:28px; z-index:20;
     pointer-events:none;
   }
   .brand .mark{
@@ -61,7 +100,7 @@
   }
 
   .instructions{
-    position:absolute; bottom:32px; left:40px; z-index:20;
+    position:absolute; bottom:24px; left:28px; z-index:20;
     font-family:'IBM Plex Mono', monospace;
     font-size:10.5px;
     letter-spacing:0.08em;
@@ -78,15 +117,14 @@
   @keyframes pulse-dot{ 0%,100%{opacity:.4} 50%{opacity:1} }
 
   .compass{
-    position:absolute; bottom:28px; right:36px; z-index:20;
-    opacity:0.5;
-    width:64px; height:64px;
+    position:absolute; top:24px; right:28px; z-index:20;
+    opacity:0.4;
+    width:56px; height:56px;
   }
 
   /* ---------- Map ---------- */
   svg#globe{
-    width:min(96vw, 1400px);
-    height:min(94vh, 900px);
+    width:100%; height:100%;
     display:block;
   }
   .sphere{ fill:url(#seaGradient); }
@@ -188,7 +226,7 @@
 
   /* ---------- Back control ---------- */
   #backBtn{
-    position:absolute; top:34px; left:50%; transform:translateX(-50%) translateY(-8px);
+    position:absolute; top:24px; left:50%; transform:translateX(-50%) translateY(-8px);
     z-index:30;
     background:rgba(15,26,38,0.7);
     border:1px solid var(--line);
@@ -218,7 +256,7 @@
     transform:translateX(100%);
     transition:transform 620ms cubic-bezier(.2,.8,.2,1);
     z-index:25;
-    padding:96px 34px 40px;
+    padding:80px 24px 40px;
     overflow-y:auto;
   }
   #journeyPanel.show{ transform:translateX(0); }
@@ -309,19 +347,19 @@
 </head>
 <body>
 
-<div id="loader">
-  <div class="ring"></div>
-  <div class="ltext">Charting the Atlas</div>
-</div>
+<div class="map-explorer">
+  <div id="loader">
+    <div class="ring"></div>
+    <div class="ltext">Charting the Atlas</div>
+  </div>
 
-<div class="stage">
   <div class="brand">
     <div class="mark">Meridian <span>&amp;</span> Co.</div>
     <div class="tag">Bespoke Journeys, Charted</div>
   </div>
 
   <div class="instructions" id="instructions">
-    <span class="dot"></span> Hover a territory to preview · click to plot the voyage
+    <span class="dot"></span> Hover a highlighted territory to preview · click to plot the voyage
   </div>
 
   <svg class="compass" viewBox="0 0 64 64">
@@ -332,7 +370,13 @@
     <text x="32" y="14" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#eadfc9">N</text>
   </svg>
 
-  <svg id="globe" viewBox="0 0 960 620"></svg>
+  <div class="stage">
+    <svg id="globe" viewBox="0 0 960 620"></svg>
+    <div class="zoom-controls">
+      <button id="zoomIn" title="Zoom In">+</button>
+      <button id="zoomOut" title="Zoom Out">−</button>
+    </div>
+  </div>
 
   <button id="backBtn"><span class="arrow">&#8592;</span> Return to the Atlas</button>
 
@@ -477,10 +521,11 @@
   merge.append("feMergeNode").attr("in","blur");
   merge.append("feMergeNode").attr("in","SourceGraphic");
 
-  // Orthographic 3D projection
+  // Orthographic 3D projection (zoomed in on Balkans)
   const projection = d3.geoOrthographic()
-    .scale(230)
+    .scale(750)
     .translate([width/2, height/2])
+    .rotate([-20, -42, 0])
     .clipAngle(90);
 
   const path = d3.geoPath(projection);
@@ -494,8 +539,8 @@
   sphereLayer.append("circle")
     .attr("class", "globe-shadow")
     .attr("cx", width/2)
-    .attr("cy", height/2 + 18)
-    .attr("r", 230 * 1.08)
+    .attr("cy", height/2 + 750 * 0.08)
+    .attr("r", 750 * 1.08)
     .style("fill", "url(#globeShadow)")
     .style("pointer-events", "none");
 
@@ -516,7 +561,7 @@
     .attr("class", "atmosphere")
     .attr("cx", width/2)
     .attr("cy", height/2)
-    .attr("r", 230)
+    .attr("r", 750)
     .style("fill", "url(#atmosphereGrad)")
     .style("pointer-events", "none");
 
@@ -527,7 +572,7 @@
   const instructions = d3.select("#instructions");
 
   let zoomedCountry = null;
-  let currentScale = 230;
+  let currentScale = 750;
   let timer = null;
   let isDragging = false;
 
@@ -673,7 +718,8 @@
 
     document.getElementById("loader").style.opacity = 0;
     setTimeout(()=> document.getElementById("loader").style.display = "none", 650);
-    startSpin();
+    // Keep spin disabled on load to preserve focus on curation region
+    updateGlobe();
   }).catch(err => {
     document.getElementById("loader").querySelector(".ltext").textContent = "The atlas could not be reached — check your connection";
     console.error(err);
@@ -699,8 +745,8 @@
     const dLat = Math.abs(bounds[1][1] - bounds[0][1]);
     const maxAngle = Math.max(dLon, dLat, 6);
     
-    // Dynamically calculate fitting scale based on country size
-    const targetScale = Math.max(380, Math.min(1000, 180 / maxAngle * 35));
+    // Dynamically calculate fitting scale based on country size (deeply zoomed in)
+    const targetScale = Math.max(1300, Math.min(2700, 180 / maxAngle * 70));
     
     const r0 = projection.rotate();
     const c0 = [-r0[0], -r0[1]];
@@ -924,12 +970,12 @@
 
     const r0 = projection.rotate();
     const s0 = projection.scale();
-    const s1 = 230;
+    const s1 = 750;
 
     const t0 = projection.translate();
     const t1 = [width/2, height/2];
 
-    const interpolateCenter = d3.geoInterpolate([-r0[0], -r0[1]], [0, 0]);
+    const interpolateCenter = d3.geoInterpolate([-r0[0], -r0[1]], [20, 42]);
     const interpolateScale = d3.interpolate(s0, s1);
     const interpolateTranslate = d3.interpolate(t0, t1);
 
@@ -950,13 +996,39 @@
         countryLayer.selectAll("path.country")
           .classed("dimmed", false)
           .classed("locked", false);
-        startSpin();
       })
       .catch(() => {});
   }
 
   d3.select("#backBtn").on("click", closeEverything);
   d3.select("#closePanel").on("click", closeEverything);
+
+  // Manual zoom control listeners
+  d3.select("#zoomIn").on("click", () => {
+    const s = projection.scale();
+    if (s >= 3500) return;
+    d3.transition().duration(350).ease(d3.easeCubicOut)
+      .tween("scale", () => {
+        const i = d3.interpolate(s, s * 1.25);
+        return (t) => {
+          projection.scale(i(t));
+          updateGlobe();
+        };
+      });
+  });
+
+  d3.select("#zoomOut").on("click", () => {
+    const s = projection.scale();
+    if (s <= 200) return;
+    d3.transition().duration(350).ease(d3.easeCubicOut)
+      .tween("scale", () => {
+        const i = d3.interpolate(s, s / 1.25);
+        return (t) => {
+          projection.scale(i(t));
+          updateGlobe();
+        };
+      });
+  });
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && zoomedCountry) closeEverything();
